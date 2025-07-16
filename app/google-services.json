@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "2465701664",
-    "project_id": "railquest-c25ea",
-    "storage_bucket": "railquest-c25ea.appspot.com"
+    "project_number": "235224752250",
+    "project_id": "railquest-4524a",
+    "storage_bucket": "railquest-4524a.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:2465701664:android:19da9f8a89e1a5b78f0145",
+        "mobilesdk_app_id": "1:235224752250:android:8fb2a8db303babfb169bc3",
         "android_client_info": {
           "package_name": "com.example.railquest"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBV9INEf9O0jzpUSm91dfUpVYATG4PRc0I"
+          "current_key": "AIzaSyB00FIymX_XGiTt_KDDa_l7uA-fF2MjQkQ"
         }
       ],
       "services": {

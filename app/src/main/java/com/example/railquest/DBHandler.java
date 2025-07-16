@@ -7,13 +7,14 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+//import com.google.firebase.database.DataSnapshot;
+//import com.google.firebase.database.DatabaseError;
+//import com.google.firebase.database.DatabaseReference;
+//import com.google.firebase.database.FirebaseDatabase;
+//import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,66 +59,107 @@ public class DBHandler {
 
     }
 
+//    public static void addUser(Context context) {
+//        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
+//        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+//        DatabaseReference databaseReference = database.getReference("users");
+//
+//        String userId = databaseReference.push().getKey();
+//
+//        if (userId != null) {
+//            databaseReference.child(userId).setValue(makeUserInfoObject(context))
+//                    .addOnSuccessListener(unused -> {
+//                        Toast.makeText(context, "User Added!", Toast.LENGTH_SHORT).show();
+//                        if (context instanceof Activity) {
+//                            ((Activity) context).finish();
+//                        }
+//                    })
+//                    .addOnFailureListener(e -> Toast.makeText(context, "Error Adding User!", Toast.LENGTH_SHORT).show());
+//        }
+//
+//    }
+
     public static void addUser(Context context) {
-        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
-        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
-        DatabaseReference databaseReference = database.getReference("Users");
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        String userId = databaseReference.push().getKey();
+        UserInfo user_obj = makeUserInfoObject(context);
 
-        if (userId != null) {
-            databaseReference.child(userId).setValue(makeUserInfoObject(context))
-                    .addOnSuccessListener(unused -> {
-                        Toast.makeText(context, "User Added!", Toast.LENGTH_SHORT).show();
-                        if (context instanceof Activity) {
-                            ((Activity) context).finish();
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(context, "Error Adding User!", Toast.LENGTH_SHORT).show();
-                    });
-        }
- 
+        db.collection("users")
+                .add(user_obj)
+                .addOnSuccessListener(documentReference -> {
+                    Log.d("DBHandler_data", "DocumentSnapshot added with ID: " + documentReference.getId());
+                    Toast.makeText(context, "User Added!", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> Log.w("DBHandler_data", "Error adding document", e));
     }
 
-    public static int verifyUserCredentials(String username, String password, final Context context) {
-        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
-        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
-        DatabaseReference usersRef = database.getReference("Users");
+//    public static int verifyUserCredentials(String username, String password, final Context context) {
+//        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
+//        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+//        DatabaseReference usersRef = database.getReference("users");
+//
+//        final int[] userValidityFlag = {0};
+//
+//        // Query the database to find the user with the provided username
+//        usersRef.orderByChild("name").equalTo(username).addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                if (dataSnapshot.exists()) {
+//                    // Username exists, check if password matches
+//                    for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
+//                        UserInfo userInfo = userSnapshot.getValue(UserInfo.class);
+//                        if (userInfo != null && userInfo.getPassword().equals(password)) {
+//                            // Username and password pair is correct
+//                            Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show();
+//                            userValidityFlag[0] = 1;
+//                            return;
+//                        }
+//                    }
+//                    // Password does not match
+//                    Toast.makeText(context, "Incorrect password", Toast.LENGTH_SHORT).show();
+//                } else {
+//                    // Username does not exist
+//                    Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show();
+//                }
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError databaseError) {
+//                Toast.makeText(context, "Error verifying credentials", Toast.LENGTH_SHORT).show();
+//            }
+//        });
+//
+//        return userValidityFlag[0];
+//    }
 
-        final int[] userValidityFlag = {0};
+    public static void verifyUserCredentials(String username, String password, final Context context) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        CollectionReference usersRef = db.collection("users");
 
-        // Query the database to find the user with the provided username
-        usersRef.orderByChild("name").equalTo(username).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists()) {
-                    // Username exists, check if password matches
-                    for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
-                        UserInfo userInfo = userSnapshot.getValue(UserInfo.class);
-                        if (userInfo != null && userInfo.getPassword().equals(password)) {
-                            // Username and password pair is correct
+        usersRef.whereEqualTo("name", username)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    if (!queryDocumentSnapshots.isEmpty()) {
+                        boolean passwordMatch = false;
+                        for (DocumentSnapshot document : queryDocumentSnapshots) {
+                            UserInfo userInfo = document.toObject(UserInfo.class);
+                            if (userInfo != null && userInfo.getPassword().equals(password)) {
+                                passwordMatch = true;
+                                break;
+                            }
+                        }
+                        if (passwordMatch) {
                             Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show();
-                            userValidityFlag[0] = 1;
-                            return;
+                        } else {
+                            Toast.makeText(context, "Incorrect password", Toast.LENGTH_SHORT).show();
                         }
+                    } else {
+                        Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show();
                     }
-                    // Password does not match
-                    Toast.makeText(context, "Incorrect password", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Username does not exist
-                    Toast.makeText(context, "User not found", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                Toast.makeText(context, "Error verifying credentials", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        return userValidityFlag[0];
+                })
+                .addOnFailureListener(e -> Toast.makeText(context, "Error verifying credentials", Toast.LENGTH_SHORT).show());
     }
+
     private static String getDataFromTextView(Context context, int id) {
         TextView textView = ((Activity)context).findViewById(id);
         return textView.getText().toString();
@@ -149,63 +191,98 @@ public class DBHandler {
 
     }
 
+//    public static void bookTickets(Context context) {
+//        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
+//        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+//        DatabaseReference databaseReference = database.getReference("test2");
+//
+//        String ticketID = databaseReference.push().getKey();
+//
+//        if (ticketID != null) {
+//            databaseReference.child(ticketID).setValue(makeTicketObject(context))
+//                    .addOnSuccessListener(unused -> {
+//                        Toast.makeText(context, "Booking Success", Toast.LENGTH_SHORT).show();
+//                        if (context instanceof Activity) {
+//                            ((Activity) context).finish();
+//                        }
+//                    })
+//                    .addOnFailureListener(e -> Toast.makeText(context, "Error generating ticket!", Toast.LENGTH_SHORT).show());
+//        }
+//
+//    }
+
     public static void bookTickets(Context context) {
-        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
-        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
-        DatabaseReference databaseReference = database.getReference("test2");
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        CollectionReference ticketsRef = db.collection("Tickets");
 
-        String ticketID = databaseReference.push().getKey();
+        Ticket ticket = makeTicketObject(context);
 
-        if (ticketID != null) {
-            databaseReference.child(ticketID).setValue(makeTicketObject(context))
-                    .addOnSuccessListener(unused -> {
-                        Toast.makeText(context, "Booking Success", Toast.LENGTH_SHORT).show();
-                        if (context instanceof Activity) {
-                            ((Activity) context).finish();
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        Toast.makeText(context, "Error generating ticket!", Toast.LENGTH_SHORT).show();
-                    });
-        }
-
+        ticketsRef.add(ticket)
+                .addOnSuccessListener(documentReference -> {
+                    Toast.makeText(context, "Booking Success", Toast.LENGTH_SHORT).show();
+                    if (context instanceof Activity) {
+                        ((Activity) context).finish();
+                    }
+                })
+                .addOnFailureListener(e -> Toast.makeText(context, "Error generating ticket!", Toast.LENGTH_SHORT).show());
     }
 
+//    public static void fetchTickets(final TicketsFetchListener listener) {
+//        // Get reference to the Firebase Realtime Database with your custom URL
+//        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
+//        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+//
+//        // Get reference to the "test" node in the database
+//        DatabaseReference ticketsRef = database.getReference("test2");
+//
+//        // Create a list to store fetched tickets
+//        List<Ticket> tickets = new ArrayList<>();
+//
+//        // Add a listener to fetch data from the database
+//        ticketsRef.addValueEventListener(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                // Clear the existing list
+//                tickets.clear();
+//
+//                // Iterate through each child node (ticket) in the "test" node
+//                for (DataSnapshot ticketSnapshot : dataSnapshot.getChildren()) {
+//                    // Deserialize the ticket data into a Ticket object
+//                    Ticket ticket = ticketSnapshot.getValue(Ticket.class);
+//                    // Add the deserialized ticket to the list
+//                    tickets.add(ticket);
+//                }
+//
+//                // Notify the listener that tickets have been fetched
+//                listener.onTicketsFetched(tickets);
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError databaseError) {
+//                // Handle error
+//                listener.onError(databaseError.getMessage());
+//            }
+//        });
+//    }
+
     public static void fetchTickets(final TicketsFetchListener listener) {
-        // Get reference to the Firebase Realtime Database with your custom URL
-        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
-        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        CollectionReference ticketsRef = db.collection("Tickets");
 
-        // Get reference to the "test" node in the database
-        DatabaseReference ticketsRef = database.getReference("test2");
+        ticketsRef.addSnapshotListener((queryDocumentSnapshots, e) -> {
+            if (e != null) {
+                listener.onError(e.getMessage());
+                return;
+            }
 
-        // Create a list to store fetched tickets
-        List<Ticket> tickets = new ArrayList<>();
-
-        // Add a listener to fetch data from the database
-        ticketsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                // Clear the existing list
-                tickets.clear();
-
-                // Iterate through each child node (ticket) in the "test" node
-                for (DataSnapshot ticketSnapshot : dataSnapshot.getChildren()) {
-                    // Deserialize the ticket data into a Ticket object
-                    Ticket ticket = ticketSnapshot.getValue(Ticket.class);
-                    // Add the deserialized ticket to the list
+            List<Ticket> tickets = new ArrayList<>();
+            if (queryDocumentSnapshots != null) {
+                for (DocumentSnapshot document : queryDocumentSnapshots) {
+                    Ticket ticket = document.toObject(Ticket.class);
                     tickets.add(ticket);
                 }
-
-                // Notify the listener that tickets have been fetched
-                listener.onTicketsFetched(tickets);
             }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                // Handle error
-                listener.onError(databaseError.getMessage());
-            }
+            listener.onTicketsFetched(tickets);
         });
     }
 
@@ -215,41 +292,62 @@ public class DBHandler {
         void onError(String errorMessage);
     }
 
+//    public static void fetchUsers(final UserFetchListener listener) {
+//        // Get reference to the Firebase Realtime Database with your custom URL
+//        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
+//        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+//
+//        // Get reference to the "test" node in the database
+//        DatabaseReference users = database.getReference("users");
+//
+//        // Create a list to store fetched userInfoList
+//        List<UserInfo> userInfoList = new ArrayList<>();
+//
+//        // Add a listener to fetch data from the database
+//        users.addValueEventListener(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+//                // Clear the existing list
+//                userInfoList.clear();
+//
+//                // Iterate through each child node (ticket) in the "test" node
+//                for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
+//                    // Deserialize the ticket data into a Ticket object
+//                    UserInfo userInfo = userSnapshot.getValue(UserInfo.class);
+//                    // Add the deserialized ticket to the list
+//                    userInfoList.add(userInfo);
+//                }
+//
+//                // Notify the listener that userInfoList has been fetched
+//                listener.onUsersFetched(userInfoList);
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError databaseError) {
+//                // Handle error
+//                listener.onError(databaseError.getMessage());
+//            }
+//        });
+//    }
+
     public static void fetchUsers(final UserFetchListener listener) {
-        // Get reference to the Firebase Realtime Database with your custom URL
-        String databaseURL = "https://railquest-c25ea-default-rtdb.asia-southeast1.firebasedatabase.app/";
-        FirebaseDatabase database = FirebaseDatabase.getInstance(databaseURL);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        CollectionReference usersRef = db.collection("users");
 
-        // Get reference to the "test" node in the database
-        DatabaseReference users = database.getReference("Users");
+        usersRef.addSnapshotListener((queryDocumentSnapshots, e) -> {
+            if (e != null) {
+                listener.onError(e.getMessage());
+                return;
+            }
 
-        // Create a list to store fetched userInfoList
-        List<UserInfo> userInfoList = new ArrayList<>();
-
-        // Add a listener to fetch data from the database
-        users.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                // Clear the existing list
-                userInfoList.clear();
-
-                // Iterate through each child node (ticket) in the "test" node
-                for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
-                    // Deserialize the ticket data into a Ticket object
-                    UserInfo userInfo = userSnapshot.getValue(UserInfo.class);
-                    // Add the deserialized ticket to the list
+            List<UserInfo> userInfoList = new ArrayList<>();
+            if (queryDocumentSnapshots != null) {
+                for (DocumentSnapshot document : queryDocumentSnapshots) {
+                    UserInfo userInfo = document.toObject(UserInfo.class);
                     userInfoList.add(userInfo);
                 }
-
-                // Notify the listener that userInfoList has been fetched
-                listener.onUsersFetched(userInfoList);
             }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError databaseError) {
-                // Handle error
-                listener.onError(databaseError.getMessage());
-            }
+            listener.onUsersFetched(userInfoList);
         });
     }
 
